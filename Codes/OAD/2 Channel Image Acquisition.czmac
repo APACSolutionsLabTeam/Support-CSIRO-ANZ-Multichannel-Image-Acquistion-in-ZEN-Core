@@ -1,0 +1,188 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Script>
+  <Context>Zen26</Context>
+  <Version>1.0</Version>
+  <Language>Python</Language>
+  <Text>#######################################################
+## A C Q U I S I T I O N
+##
+## Macro name: 2 Channel Image Acquisition.czmac (ZEN core)
+##
+## ENTER SAMPLE INFO, SNAP IMAGES,
+## SET CHANNEL NAME AND COLOR,
+## CREATE MC IMAGE, SAVE IMAGE
+##
+##
+## Copyright (c) 2020 by Carl Zeiss Microscopy GmbH.
+## Permission is granted to use, modify and distribute this code,
+## as long as this copyright notice remains part of the code.
+#######################################################
+##
+## Clear the ZEN macro editor
+Zen.Application.MacroEditor.ClearMessages()
+##
+## Activate IO library
+from System.IO import Directory
+##
+## Read the Hardware Settings to get Reflector positions
+num_ref_items = Zen.Devices.Reflector.ItemsCount
+##
+list_pos = []
+for i in range(num_ref_items):
+    pos = Zen.Devices.Reflector.GetNameByPosition(i)
+    if pos is None:
+        pos = 'Brightfield'
+    list_pos.append(pos)
+##
+## Create GUI setup dialog
+window = ZenWindow()
+Images = Zen.Application.Environment.GetFolderPath(ZenSpecialFolder.Images)
+window.AddFolderBrowser('destpath','DestinationFolder:             ',Images)
+window.AddTextBox('tval0','Enter sample name:          ','sample')
+window.AddDropDown('ddval_1','Enter name for channel 1:',list_pos,0)
+window.AddDropDown('ddval_2','Enter name for channel 2:',list_pos,0)
+## Do the setup
+result=window.Show()
+## Check, if Cancel button was clicked
+if result.HasCanceled == True:
+    sys.exit('Macro aborted with Cancel!')
+## Get string name of path
+path = result.GetValue('destpath')
+## Check, if path exists
+if (Directory.Exists(path)== False):
+    strMessage = 'Path: ' + path + ' does not exist!\nRestart macro and select an existing path!'
+    sys.exit(strMessage)
+## Get the sample name
+sampleName = result.GetValue('tval0')
+## check, if sample name is not empty
+sampleName = sampleName.Trim()
+if sampleName == "":
+    strMessage = 'Sample name is empty!\nRestart macro and enter a sample name!'
+    sys.exit(strMessage)
+## Get name of channel1
+channel1Name = result.GetValue('ddval_1')
+## Check, if name of channel1 is not empty
+channel1Name = channel1Name.Trim()
+if channel1Name == "":
+    strMessage = 'Name of channel 1 is empty!\nRestart macro and enter a name for channel 1!'
+    sys.exit(strMessage)
+elif channel1Name == 'Brightfield':  
+    channel1Name = 'BF'
+else:
+    channel1Name = channel1Name 
+    window1_5 = ZenWindow()
+    window1_5.AddDropDown('ddval1','Select color for channel 1 (Fluorescence channel):',['Red','Green','Blue','Yellow','Cyan','Magenta','White'],0)
+    result1_5 = window1_5.Show()
+    chan1 = result1_5.GetValue('ddval1')
+##
+## Get name of channel2
+channel2Name = result.GetValue('ddval_2')
+## Check, if name of channel1 is not empty
+channel2Name = channel2Name.Trim()
+if channel2Name == "":
+    strMessage = 'Name of channel 2 is empty!\nRestart macro and enter a name for channel 2!'
+    sys.exit(strMessage)
+elif channel2Name == 'Brightfield':  
+    channel2Name = 'BF'
+else:
+    channel2Name = channel2Name     
+    window2_5 = ZenWindow()
+    window2_5.AddDropDown('ddval2','Select color for channel 2 (Fluorescence channel):',['Red','Green','Blue','Yellow','Cyan','Magenta','White'],0)
+    result2_5 = window2_5.Show()
+    chan2 = result2_5.GetValue('ddval2')
+## Snapping the channel images 
+## loop over the 2 channel images
+for i in range(0,2): 
+    ## Snap single channel images
+    if i == 0:
+        ## Show live image
+        live = Zen.Acquisition.StartLive()
+        ## Set exposure time (AutoExposure)
+        Zen.Acquisition.AutoExposure()
+        ## Show pause dialog 
+        Zen.Application.ActiveDocument = live
+        ## Snap image C1
+        image1 = Zen.Acquisition.AcquireImage()
+        image1.Name = 'Channel1'
+        Zen.Application.ActiveDocument = image1
+    elif i == 1:
+        ## Show live image
+        live = Zen.Acquisition.StartLive()
+        ## Set exposure time (AutoExposure)
+        Zen.Acquisition.AutoExposure()
+        ## Show pause dialog 
+        Zen.Application.ActiveDocument = live
+        ## Snap image C1
+        image2 = Zen.Acquisition.AcquireImage()
+        image2.Name = 'Channel2'
+        Zen.Application.ActiveDocument = image2
+## Display filter set message if either one of the channels is a Fluorescence channel       
+##if channel1Name or channel2Name!= 'BF':
+##  Zen.Application.Pause("FL filter set for the Fluorescence channel")    
+##
+## Add 2 channel images to one image
+image4 = Zen.Processing.Utilities.AddChannels(image1, image2)
+## Apply channel names and colors
+## channel 1
+image4.SetChannelName(0,channel1Name)
+if channel1Name == 'BF':
+    image4.SetChannelColor(0,ZenColors.Gray) 
+else:
+    if chan1 == 'Red':
+        image4.SetChannelColor(0,ZenColors.Red)
+    elif chan1 == 'Green':
+        image4.SetChannelColor(0,ZenColors.Green)
+    elif chan1 == 'Blue':
+        image4.SetChannelColor(0,ZenColors.Blue)
+    elif chan1 == 'Yellow':
+        image4.SetChannelColor(0,ZenColors.Yellow)
+    elif chan1 == 'Cyan':
+        image4.SetChannelColor(0,ZenColors.Cyan)
+    elif chan1 == 'Magenta':
+        image4.SetChannelColor(0,ZenColors.Magenta)
+    elif chan1 == 'White':
+        image4.SetChannelColor(0,ZenColors.White) 
+## channel 2
+image4.SetChannelName(1,channel2Name)
+if channel2Name == 'BF':
+    image4.SetChannelColor(1,ZenColors.Gray) 
+else:    
+    if chan2 == 'Red':
+        image4.SetChannelColor(1,ZenColors.Red)
+    elif chan2 == 'Green':
+        image4.SetChannelColor(1,ZenColors.Green)
+    elif chan2 == 'Blue':
+        image4.SetChannelColor(1,ZenColors.Blue)
+    elif chan2 == 'Yellow':
+        image4.SetChannelColor(1,ZenColors.Yellow)
+    elif chan2 == 'Cyan':
+        image4.SetChannelColor(1,ZenColors.Cyan)
+    elif chan2 == 'Magenta':
+        image4.SetChannelColor(1,ZenColors.Magenta)
+    elif chan2 == 'White':
+        image4.SetChannelColor(1,ZenColors.White)
+##  
+## show image
+Zen.Application.ActiveDocument = image4
+##
+## Save the image automatically with sample name and image number
+Zen.Application.Save(image4,path + '\\' + sampleName + '.czi')
+## Close images
+image1.Close()
+image2.Close()
+## Close live image
+Zen.Acquisition.StopLive()
+##
+## Show message
+strMessage = 'Images are saved in: ' + path
+print(strMessage)
+#Zen.Application.Pause(strMessage)
+##
+#######################################################
+</Text>
+  <Author></Author>
+  <Description></Description>
+  <Keywords></Keywords>
+  <Row>116</Row>
+  <Column>5</Column>
+</Script>
